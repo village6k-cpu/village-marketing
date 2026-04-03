@@ -1,6 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// 빌리지 유입로그 — GAS 코드
-// 새 스프레드시트의 Apps Script에 이 코드 전체를 붙여넣기
+// 빌리지 마케팅 1.0 — 유입로그 GAS 코드 (clasp 관리)
 // ═══════════════════════════════════════════════════════════════
 
 var INFLOW_SHEET = "유입로그";
@@ -20,8 +19,6 @@ function doGet(e) {
       .addMetaTag("viewport", "width=device-width, initial-scale=1.0, user-scalable=no");
   }
 
-
-
   try {
     switch (action) {
       case "list":
@@ -36,7 +33,6 @@ function doGet(e) {
       case "update":
         result = doUpdate_(e.parameter);
         break;
-
       default:
         result = { success: false, error: "Unknown action: " + action };
     }
@@ -74,7 +70,6 @@ function doPost(e) {
       case "update":
         result = doUpdate_(params);
         break;
-
       default:
         result = { success: false, error: "Unknown action: " + action };
     }
@@ -221,16 +216,12 @@ function doUpdate_(params) {
 }
 
 
-
-
-
 // ─── google.script.run 용 래퍼 (HTML에서 호출) ──────────────
 
 function apiCreate(params) { return doCreate_(params); }
 function apiList(params)   { return doList_(params); }
 function apiGetRow(params) { return doGetRow_(params); }
 function apiUpdate(params) { return doUpdate_(params); }
-
 
 // ═══════════════════════════════════════════════════════════════
 // 시트 초기 설정 (최초 1회 실행)
