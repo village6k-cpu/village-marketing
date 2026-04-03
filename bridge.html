@@ -9,16 +9,16 @@ window.addEventListener("message", function(event) {
 
   google.script.run
     .withSuccessHandler(function(result) {
-      window.parent.postMessage({ type: "parseImageResult", result: result }, "*");
+      window.top.postMessage({ type: "parseImageResult", result: result }, "*");
     })
     .withFailureHandler(function(err) {
-      window.parent.postMessage({ type: "parseImageResult", result: { success: false, error: err.message || "서버 오류" } }, "*");
+      window.top.postMessage({ type: "parseImageResult", result: { success: false, error: err.message || "서버 오류" } }, "*");
     })
     .apiParseImage({ image: data.image });
 });
 
 // 로드 완료 알림
-window.parent.postMessage({ type: "bridgeReady" }, "*");
+window.top.postMessage({ type: "bridgeReady" }, "*");
 </script>
 </body>
 </html>
