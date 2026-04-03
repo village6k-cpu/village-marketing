@@ -238,6 +238,37 @@ function setupClaudeApiKey(key) {
   SpreadsheetApp.getUi().alert("Claude API 키가 저장되었습니다.");
 }
 
+function testImageApi() {
+  // 1. API 키 확인
+  var apiKey = PropertiesService.getScriptProperties().getProperty("CLAUDE_API_KEY");
+  if (!apiKey) {
+    SpreadsheetApp.getUi().alert("❌ API 키 없음. setupClaudeApiKey('sk-ant-...') 실행 필요");
+    return;
+  }
+  SpreadsheetApp.getUi().alert("✅ API 키 있음: " + apiKey.substring(0, 12) + "...\n\n이제 UrlFetchApp 테스트합니다.");
+
+  // 2. UrlFetchApp 호출 테스트
+  try {
+    var res = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+      method: "post",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json"
+      },
+      payload: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 10,
+        messages: [{ role: "user", content: "hi" }]
+      }),
+      muteHttpExceptions: true
+    });
+    SpreadsheetApp.getUi().alert("✅ UrlFetchApp 성공!\n응답코드: " + res.getResponseCode() + "\n내용: " + res.getContentText().substring(0, 200));
+  } catch (err) {
+    SpreadsheetApp.getUi().alert("❌ UrlFetchApp 실패: " + err.message);
+  }
+}
+
 function doParseImage_(params) {
   var imageData = params.image || "";
   if (!imageData) return { success: false, error: "이미지 데이터 없음" };
@@ -263,11 +294,19 @@ function doParseImage_(params) {
         },
         {
           type: "text",
-          text: "이 카카오톡 채팅 캡쳐에서 다음 정보를 추출해줘. JSON으로만 답변해.\n" +
-                "1. 유입경로: 고객이 어디서 알고 왔는지 (네이버검색/인스타그램/당근마켓/지인소개/기타 중 하나. 판단 불가시 '기타')\n" +
-                "2. 문의장비: 고객이 문의한 카메라/렌즈/장비명 (여러 개면 쉼표로 구분)\n" +
-                "3. 고객유형: 재방문 단서가 있으면 '재방문', 없으면 '신규'\n\n" +
-                "응답 형식: {\"유입경로\":\"...\",\"문의장비\":\"...\",\"고객유형\":\"...\"}"
+          text: "이것은 카메라 렌탈샵(빌리지)의 카카오톡 고객 문의 캡쳐 화면이야.\n" +
+                "채팅 내용을 꼼꼼히 읽고 다음 정보를 추출해. 반드시 JSON만 답변해.\n\n" +
+                "1. 유입경로: 고객이 어떻게 알고 연락했는지 파악해.\n" +
+                "   - '네이버에서 봤어요', '검색해서' → \"네이버검색\"\n" +
+                "   - '인스타에서', 'SNS에서' → \"인스타그램\"\n" +
+                "   - '당근에서', '당근마켓' → \"당근마켓\"\n" +
+                "   - '소개받았어요', '친구가', '지인' → \"지인소개\"\n" +
+                "   - 위에 해당 없거나 언급 없으면 → \"기타\"\n\n" +
+                "2. 문의장비: 고객이 빌리려는 카메라/렌즈/장비명을 모두 추출해. (여러 개면 쉼표 구분)\n" +
+                "   예: \"FX6\", \"A7M4, 24-70 렌즈\", \"RED KOMODO\"\n" +
+                "   장비 언급이 없으면 \"미확인\"\n\n" +
+                "3. 고객유형: '전에도 빌렸어요', '다시', '재렌탈', '또' 등 재방문 힌트가 있으면 \"재방문\", 없으면 \"신규\"\n\n" +
+                "응답: {\"유입경로\":\"...\",\"문의장비\":\"...\",\"고객유형\":\"...\"}"
         }
       ]
     }]

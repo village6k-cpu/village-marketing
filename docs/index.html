@@ -398,7 +398,7 @@ function resizeImage(dataUrl, maxSize, cb) {
     canvas.width = w;
     canvas.height = h;
     canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-    cb(canvas.toDataURL("image/jpeg", 0.7));
+    cb(canvas.toDataURL("image/jpeg", 0.85));
   };
   img.src = dataUrl;
 }
@@ -470,7 +470,7 @@ function handleImage(input) {
 
   reader.onload = function(e) {
     var base64 = e.target.result;
-    resizeImage(base64, 800, function(resized) {
+    resizeImage(base64, 1200, function(resized) {
       if (!bridgeReady) {
         status.textContent = "브릿지 로딩 중... 잠시 후 다시 시도해주세요.";
         scanBtn.disabled = false;
