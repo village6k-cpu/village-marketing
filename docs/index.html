@@ -471,14 +471,22 @@ function handleImage(input) {
   reader.onload = function(e) {
     var base64 = e.target.result;
     resizeImage(base64, 1200, function(resized) {
-      if (!bridgeReady) {
-        status.textContent = "브릿지 로딩 중... 잠시 후 다시 시도해주세요.";
-        scanBtn.disabled = false;
-        scanBtn.textContent = "캡쳐 사진 선택";
-        input.value = "";
-        return;
+      function trySend(attempts) {
+        if (bridgeReady) {
+          bridgeIframe.contentWindow.postMessage({ type: "parseImage", image: resized }, "*");
+          return;
+        }
+        if (attempts <= 0) {
+          status.textContent = "서버 연결 실패. 페이지 새로고침 후 다시 시도해주세요.";
+          scanBtn.disabled = false;
+          scanBtn.textContent = "캡쳐 사진 선택";
+          input.value = "";
+          return;
+        }
+        status.textContent = "서버 연결 중... (" + attempts + ")";
+        setTimeout(function() { trySend(attempts - 1); }, 1000);
       }
-      bridgeIframe.contentWindow.postMessage({ type: "parseImage", image: resized }, "*");
+      trySend(10);
     });
   };
   reader.readAsDataURL(file);
