@@ -31,6 +31,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .conditional { display: none; }
 .conditional.show { display: block; }
 
+.scan-btn { width: 100%; padding: 14px; border: 2px dashed #1a73e8; border-radius: 10px; background: #e8f0fe; color: #1a73e8; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.scan-btn:active { background: #d2e3fc; }
+.scan-btn:disabled { border-color: #ccc; background: #f5f5f5; color: #999; }
+
 .submit-btn { width: 100%; padding: 16px; border: none; border-radius: 12px; background: #1a73e8; color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
 .submit-btn:active { background: #1557b0; }
 .submit-btn:disabled { background: #ccc; }
@@ -82,6 +86,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <!-- 입력 탭 -->
 <div id="page-input" class="page active">
+  <div class="card" id="scan-card">
+    <h3>채팅 캡쳐로 자동입력</h3>
+    <input type="file" id="image-input" accept="image/*" capture="environment" style="display:none" onchange="handleImage(this)">
+    <button class="scan-btn" onclick="document.getElementById('image-input').click()">캡쳐 사진 선택</button>
+    <div id="scan-status" style="display:none; margin-top:10px; font-size:13px; color:#666; text-align:center;"></div>
+  </div>
+
   <div class="card">
     <h3>유입경로 *</h3>
     <div class="btn-group" id="channel-group">
@@ -373,6 +384,72 @@ function submitEdit() {
     if (res.success) { showToast("수정 완료"); closeModal(); loadList(); }
     else { showToast("오류: " + res.error); }
   });
+}
+
+function handleImage(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var reader = new FileReader();
+  var scanBtn = document.querySelector('.scan-btn');
+  var status = document.getElementById('scan-status');
+
+  scanBtn.disabled = true;
+  scanBtn.textContent = "분석 중...";
+  status.style.display = "block";
+  status.textContent = "AI가 채팅 내용을 분석하고 있습니다...";
+
+  reader.onload = function(e) {
+    var base64 = e.target.result;
+    // GAS는 GET URL 길이 제한이 있으므로 POST로 보냄
+    fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "parseImage", image: base64 }),
+      redirect: "follow"
+    })
+    .then(function(r) { return r.json(); })
+    .catch(function() {
+      // GAS redirect 문제 시 JSONP fallback 불가 (이미지가 너무 큼)
+      // POST redirect follow로 처리
+      return { success: false, error: "네트워크 오류. 다시 시도해주세요." };
+    })
+    .then(function(res) {
+      scanBtn.disabled = false;
+      scanBtn.textContent = "캡쳐 사진 선택";
+      input.value = "";
+
+      if (!res || !res.success) {
+        status.textContent = "분석 실패: " + (res ? res.error : "알 수 없는 오류");
+        return;
+      }
+
+      var d = res.data;
+      status.textContent = "자동 입력 완료!";
+      setTimeout(function() { status.style.display = "none"; }, 2000);
+
+      // 유입경로 자동 선택
+      if (d.유입경로) {
+        var chBtns = document.getElementById('channel-group').querySelectorAll('button');
+        chBtns.forEach(function(b) {
+          b.classList.remove('selected');
+          if (b.textContent === d.유입경로) { b.classList.add('selected'); selected.channel = d.유입경로; }
+        });
+      }
+      // 고객유형 자동 선택
+      if (d.고객유형) {
+        var ctBtns = document.getElementById('custtype-group').querySelectorAll('button');
+        ctBtns.forEach(function(b) {
+          b.classList.remove('selected');
+          if (b.textContent === d.고객유형) { b.classList.add('selected'); selected.custtype = d.고객유형; }
+        });
+      }
+      // 문의장비 자동 입력
+      if (d.문의장비) {
+        document.getElementById('input-equip').value = d.문의장비;
+      }
+    });
+  };
+  reader.readAsDataURL(file);
 }
 
 function showToast(msg) {

@@ -34,6 +34,9 @@ function doGet(e) {
       case "update":
         result = doUpdate_(e.parameter);
         break;
+      case "parseImage":
+        result = doParseImage_(e.parameter);
+        break;
       default:
         result = { success: false, error: "Unknown action: " + action };
     }
@@ -70,6 +73,9 @@ function doPost(e) {
         break;
       case "update":
         result = doUpdate_(params);
+        break;
+      case "parseImage":
+        result = doParseImage_(params);
         break;
       default:
         result = { success: false, error: "Unknown action: " + action };
@@ -217,12 +223,82 @@ function doUpdate_(params) {
 }
 
 
+// ─── 이미지 파싱 (Claude API) ───────────────────────────────
+
+// GAS 편집기에서 setupClaudeApiKey("sk-ant-...") 형태로 실행
+function setupClaudeApiKey(key) {
+  if (!key) { SpreadsheetApp.getUi().alert("사용법: setupClaudeApiKey('sk-ant-...')"); return; }
+  PropertiesService.getScriptProperties().setProperty("CLAUDE_API_KEY", key);
+  SpreadsheetApp.getUi().alert("Claude API 키가 저장되었습니다.");
+}
+
+function doParseImage_(params) {
+  var imageData = params.image || "";
+  if (!imageData) return { success: false, error: "이미지 데이터 없음" };
+
+  // data:image/... 접두사 제거
+  var base64 = imageData.replace(/^data:image\/[^;]+;base64,/, "");
+  var mediaType = "image/jpeg";
+  var match = imageData.match(/^data:(image\/[^;]+);base64,/);
+  if (match) mediaType = match[1];
+
+  var apiKey = PropertiesService.getScriptProperties().getProperty("CLAUDE_API_KEY");
+  if (!apiKey) return { success: false, error: "Claude API 키 미설정. setupClaudeApiKey() 실행 필요" };
+
+  var payload = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 300,
+    messages: [{
+      role: "user",
+      content: [
+        {
+          type: "image",
+          source: { type: "base64", media_type: mediaType, data: base64 }
+        },
+        {
+          type: "text",
+          text: "이 카카오톡 채팅 캡쳐에서 다음 정보를 추출해줘. JSON으로만 답변해.\n" +
+                "1. 유입경로: 고객이 어디서 알고 왔는지 (네이버검색/인스타그램/당근마켓/지인소개/기타 중 하나. 판단 불가시 '기타')\n" +
+                "2. 문의장비: 고객이 문의한 카메라/렌즈/장비명 (여러 개면 쉼표로 구분)\n" +
+                "3. 고객유형: 재방문 단서가 있으면 '재방문', 없으면 '신규'\n\n" +
+                "응답 형식: {\"유입경로\":\"...\",\"문의장비\":\"...\",\"고객유형\":\"...\"}"
+        }
+      ]
+    }]
+  };
+
+  var options = {
+    method: "post",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json"
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+  var json = JSON.parse(response.getContentText());
+
+  if (json.error) return { success: false, error: json.error.message };
+
+  var text = json.content[0].text;
+  // JSON 부분만 추출
+  var jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return { success: false, error: "파싱 실패", raw: text };
+
+  var parsed = JSON.parse(jsonMatch[0]);
+  return { success: true, data: parsed };
+}
+
 // ─── google.script.run 용 래퍼 (HTML에서 호출) ──────────────
 
 function apiCreate(params) { return doCreate_(params); }
 function apiList(params)   { return doList_(params); }
 function apiGetRow(params) { return doGetRow_(params); }
 function apiUpdate(params) { return doUpdate_(params); }
+function apiParseImage(params) { return doParseImage_(params); }
 
 
 // ═══════════════════════════════════════════════════════════════
