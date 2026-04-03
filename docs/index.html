@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>빌리지 유입로그</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+
+.tab-bar { display: flex; position: sticky; top: 0; z-index: 100; background: #1a73e8; }
+.tab-bar button { flex: 1; padding: 14px 0; border: none; background: transparent; color: rgba(255,255,255,0.7); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.tab-bar button.active { color: #fff; border-bottom: 3px solid #fff; }
+
+.page { display: none; padding: 16px; padding-bottom: 100px; }
+.page.active { display: block; }
+.card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card h3 { font-size: 14px; color: #666; margin-bottom: 10px; }
+
+.btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn-group button { flex: 1; min-width: calc(33% - 8px); padding: 14px 8px; border: 2px solid #e0e0e0; border-radius: 10px; background: #fff; font-size: 14px; font-weight: 500; color: #333; cursor: pointer; transition: all 0.15s; }
+.btn-group button.selected { border-color: #1a73e8; background: #e8f0fe; color: #1a73e8; font-weight: 700; }
+.btn-group.two-col button { min-width: calc(50% - 4px); }
+
+.field input, .field textarea { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; outline: none; transition: border-color 0.2s; }
+.field input:focus, .field textarea:focus { border-color: #1a73e8; }
+.field textarea { height: 80px; resize: none; }
+
+.conditional { display: none; }
+.conditional.show { display: block; }
+
+.submit-btn { width: 100%; padding: 16px; border: none; border-radius: 12px; background: #1a73e8; color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+.submit-btn:active { background: #1557b0; }
+.submit-btn:disabled { background: #ccc; }
+
+.filter-bar { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; }
+.filter-bar button { flex-shrink: 0; padding: 8px 14px; border: 1.5px solid #e0e0e0; border-radius: 20px; background: #fff; font-size: 13px; color: #666; cursor: pointer; }
+.filter-bar button.active { border-color: #1a73e8; background: #e8f0fe; color: #1a73e8; font-weight: 600; }
+
+.list-item { background: #fff; border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); cursor: pointer; transition: background 0.15s; }
+.list-item:active { background: #f0f0f0; }
+.list-item .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.list-item .channel { font-size: 12px; padding: 3px 8px; border-radius: 10px; font-weight: 600; }
+.ch-네이버검색 { background: #e8f5e9; color: #2e7d32; }
+.ch-인스타그램 { background: #fce4ec; color: #c62828; }
+.ch-당근마켓 { background: #fff3e0; color: #e65100; }
+.ch-지인소개 { background: #e3f2fd; color: #1565c0; }
+.ch-기타 { background: #f5f5f5; color: #616161; }
+.list-item .date { font-size: 12px; color: #999; }
+.list-item .equip { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.list-item .meta { font-size: 12px; color: #888; display: flex; gap: 8px; }
+.badge { font-size: 11px; padding: 2px 6px; border-radius: 6px; font-weight: 600; }
+.badge.Y { background: #e6f4ea; color: #1e8e3e; }
+.badge.N { background: #fce8e6; color: #d93025; }
+.badge.pending { background: #fff8e1; color: #f9a825; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: #999; }
+
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: flex-end; }
+.modal-overlay.show { display: flex; }
+.modal { background: #fff; border-radius: 16px 16px 0 0; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; padding: 24px 20px; padding-bottom: 40px; }
+.modal h2 { font-size: 18px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+.modal .close-btn { background: none; border: none; font-size: 24px; color: #999; cursor: pointer; padding: 4px 8px; }
+.modal .card { box-shadow: none; border: 1px solid #eee; }
+
+.loading { text-align: center; padding: 40px; color: #999; }
+.spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 500; z-index: 300; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="tab-bar">
+  <button class="active" onclick="switchTab('input')">입력</button>
+  <button onclick="switchTab('list')">목록</button>
+</div>
+
+<!-- 입력 탭 -->
+<div id="page-input" class="page active">
+  <div class="card">
+    <h3>유입경로 *</h3>
+    <div class="btn-group" id="channel-group">
+      <button onclick="selectBtn(this,'channel')">네이버검색</button>
+      <button onclick="selectBtn(this,'channel')">인스타그램</button>
+      <button onclick="selectBtn(this,'channel')">당근마켓</button>
+      <button onclick="selectBtn(this,'channel')">지인소개</button>
+      <button onclick="selectBtn(this,'channel')">기타</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>고객유형 *</h3>
+    <div class="btn-group two-col" id="custtype-group">
+      <button onclick="selectBtn(this,'custtype')">신규</button>
+      <button onclick="selectBtn(this,'custtype')">재방문</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>문의장비 *</h3>
+    <div class="field">
+      <input type="text" id="input-equip" placeholder="예: FX6, R5+렌즈">
+    </div>
+  </div>
+  <div class="card">
+    <h3>메모</h3>
+    <div class="field">
+      <textarea id="input-memo" placeholder="자유 입력 (선택)"></textarea>
+    </div>
+  </div>
+  <button class="submit-btn" id="submit-btn" onclick="submitForm()">저장</button>
+</div>
+
+<!-- 목록 탭 -->
+<div id="page-list" class="page">
+  <div class="filter-bar">
+    <button class="active" onclick="setFilter(this,'')">전체</button>
+    <button onclick="setFilter(this,'pending')">미확정</button>
+    <button onclick="setFilter(this,'booked')">예약</button>
+    <button onclick="setFilter(this,'lost')">미예약</button>
+  </div>
+  <div id="list-container">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- 수정 모달 -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <h2>
+      <span>수정</span>
+      <button class="close-btn" onclick="closeModal()">&times;</button>
+    </h2>
+    <div class="card">
+      <h3>유입경로</h3>
+      <div class="btn-group" id="edit-channel-group">
+        <button onclick="selectBtn(this,'edit-channel')">네이버검색</button>
+        <button onclick="selectBtn(this,'edit-channel')">인스타그램</button>
+        <button onclick="selectBtn(this,'edit-channel')">당근마켓</button>
+        <button onclick="selectBtn(this,'edit-channel')">지인소개</button>
+        <button onclick="selectBtn(this,'edit-channel')">기타</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>고객유형</h3>
+      <div class="btn-group two-col" id="edit-custtype-group">
+        <button onclick="selectBtn(this,'edit-custtype')">신규</button>
+        <button onclick="selectBtn(this,'edit-custtype')">재방문</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>문의장비</h3>
+      <div class="field">
+        <input type="text" id="edit-equip">
+      </div>
+    </div>
+    <div class="card">
+      <h3>예약여부</h3>
+      <div class="btn-group two-col" id="edit-booked-group">
+        <button onclick="selectBtn(this,'edit-booked'); toggleEditConditions()">Y</button>
+        <button onclick="selectBtn(this,'edit-booked'); toggleEditConditions()">N</button>
+      </div>
+    </div>
+    <div class="card conditional" id="edit-amount-card">
+      <h3>예약금액</h3>
+      <div class="field">
+        <input type="number" id="edit-amount" placeholder="금액 입력" inputmode="numeric">
+      </div>
+    </div>
+    <div class="card conditional" id="edit-reason-card">
+      <h3>미예약사유</h3>
+      <div class="btn-group" id="edit-reason-group">
+        <button onclick="selectBtn(this,'edit-reason')">가격</button>
+        <button onclick="selectBtn(this,'edit-reason')">장비없음</button>
+        <button onclick="selectBtn(this,'edit-reason')">일정안맞음</button>
+        <button onclick="selectBtn(this,'edit-reason')">타업체이용</button>
+        <button onclick="selectBtn(this,'edit-reason')">단순문의</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>메모</h3>
+      <div class="field">
+        <textarea id="edit-memo"></textarea>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="submitEdit()">수정 저장</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var API_URL = "https://script.google.com/macros/s/AKfycbzT9asf-IaI2Q4C6pWqoLZm9PzwNQv6RIzbaGawu1UL-KnnhMszmCrXXG4aLIKjBxQY/exec";
+
+var selected = { channel: "", custtype: "", "edit-channel": "", "edit-custtype": "", "edit-booked": "", "edit-reason": "" };
+var currentFilter = "";
+var editingRow = null;
+
+function callAPI(params, cb) {
+  var qs = Object.keys(params).map(function(k) {
+    return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+  }).join("&");
+  var script = document.createElement("script");
+  var cbName = "cb_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+  window[cbName] = function(data) {
+    cb(data);
+    delete window[cbName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+  };
+  script.src = API_URL + "?" + qs + "&callback=" + cbName;
+  script.onerror = function() {
+    cb({ success: false, error: "네트워크 오류" });
+    delete window[cbName];
+  };
+  document.body.appendChild(script);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-bar button').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  if (tab === 'input') {
+    document.querySelector('.tab-bar button:nth-child(1)').classList.add('active');
+    document.getElementById('page-input').classList.add('active');
+  } else {
+    document.querySelector('.tab-bar button:nth-child(2)').classList.add('active');
+    document.getElementById('page-list').classList.add('active');
+    loadList();
+  }
+}
+
+function selectBtn(btn, group) {
+  btn.parentElement.querySelectorAll('button').forEach(function(b) { b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  selected[group] = btn.textContent;
+}
+
+function submitForm() {
+  var channel = selected.channel;
+  var custtype = selected.custtype;
+  var equip = document.getElementById('input-equip').value.trim();
+  if (!channel) { showToast("유입경로를 선택하세요"); return; }
+  if (!custtype) { showToast("고객유형을 선택하세요"); return; }
+  if (!equip) { showToast("문의장비를 입력하세요"); return; }
+
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = "저장 중...";
+
+  callAPI({
+    action: "create",
+    유입경로: channel,
+    고객유형: custtype,
+    문의장비: equip,
+    예약여부: "N",
+    메모: document.getElementById('input-memo').value.trim()
+  }, function(res) {
+    btn.disabled = false;
+    btn.textContent = "저장";
+    if (res.success) { showToast("등록 완료"); resetForm(); }
+    else { showToast("오류: " + res.error); }
+  });
+}
+
+function resetForm() {
+  selected.channel = "";
+  selected.custtype = "";
+  document.querySelectorAll('#page-input .btn-group button').forEach(function(b) { b.classList.remove('selected'); });
+  document.getElementById('input-equip').value = "";
+  document.getElementById('input-memo').value = "";
+}
+
+function loadList() {
+  var container = document.getElementById('list-container');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  var params = { action: "list" };
+  if (currentFilter) params.filter = currentFilter;
+
+  callAPI(params, function(res) {
+    if (!res.success) {
+      container.innerHTML = '<div class="empty-state"><p>' + res.error + '</p></div>';
+      return;
+    }
+    if (!res.data || res.data.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>데이터가 없습니다</p></div>';
+      return;
+    }
+    var html = '';
+    res.data.forEach(function(item) {
+      var badgeClass = item.예약여부 === "Y" ? "Y" : (item.미예약사유 ? "N" : "pending");
+      var badgeText = item.예약여부 === "Y" ? "예약" : (item.미예약사유 ? "미예약" : "미확정");
+      var extra = item.예약여부 === "Y" && item.예약금액 ? " | " + item.예약금액 + "원" : "";
+      extra += item.미예약사유 ? " | " + item.미예약사유 : "";
+
+      html += '<div class="list-item" onclick="openEdit(' + item.row + ')">';
+      html += '<div class="top"><span class="channel ch-' + item.유입경로 + '">' + item.유입경로 + '</span>';
+      html += '<span class="date">' + item.일시 + '</span></div>';
+      html += '<div class="equip">' + item.문의장비 + '</div>';
+      html += '<div class="meta"><span>' + item.고객유형 + '</span>';
+      html += '<span class="badge ' + badgeClass + '">' + badgeText + '</span>';
+      html += '<span>' + extra + '</span></div>';
+      if (item.메모) html += '<div style="font-size:12px;color:#999;margin-top:4px;">' + item.메모 + '</div>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  });
+}
+
+function setFilter(btn, filter) {
+  document.querySelectorAll('.filter-bar button').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  currentFilter = filter;
+  loadList();
+}
+
+function openEdit(row) {
+  editingRow = row;
+  document.getElementById('modal-overlay').classList.add('show');
+
+  callAPI({ action: "get", row: row }, function(res) {
+    if (!res.success) { showToast("로드 실패"); closeModal(); return; }
+    var d = res.data;
+    selectBtnByValue('edit-channel-group', d.유입경로, 'edit-channel');
+    selectBtnByValue('edit-custtype-group', d.고객유형, 'edit-custtype');
+    document.getElementById('edit-equip').value = d.문의장비;
+    selectBtnByValue('edit-booked-group', d.예약여부 || "N", 'edit-booked');
+    document.getElementById('edit-amount').value = d.예약금액 ? d.예약금액.replace(/,/g, '') : "";
+    selectBtnByValue('edit-reason-group', d.미예약사유, 'edit-reason');
+    document.getElementById('edit-memo').value = d.메모 || "";
+    toggleEditConditions();
+  });
+}
+
+function selectBtnByValue(groupId, value, groupKey) {
+  document.getElementById(groupId).querySelectorAll('button').forEach(function(b) {
+    b.classList.remove('selected');
+    if (b.textContent === value) { b.classList.add('selected'); selected[groupKey] = value; }
+  });
+}
+
+function toggleEditConditions() {
+  var booked = selected['edit-booked'];
+  document.getElementById('edit-amount-card').classList.toggle('show', booked === "Y");
+  document.getElementById('edit-reason-card').classList.toggle('show', booked !== "Y");
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('show');
+  editingRow = null;
+  selected['edit-channel'] = '';
+  selected['edit-custtype'] = '';
+  selected['edit-booked'] = '';
+  selected['edit-reason'] = '';
+}
+
+function submitEdit() {
+  if (!editingRow) return;
+  callAPI({
+    action: "update",
+    row: editingRow,
+    유입경로: selected['edit-channel'],
+    고객유형: selected['edit-custtype'],
+    문의장비: document.getElementById('edit-equip').value.trim(),
+    예약여부: selected['edit-booked'],
+    예약금액: document.getElementById('edit-amount').value || "",
+    미예약사유: selected['edit-booked'] === "N" ? selected['edit-reason'] : "",
+    메모: document.getElementById('edit-memo').value.trim()
+  }, function(res) {
+    if (res.success) { showToast("수정 완료"); closeModal(); loadList(); }
+    else { showToast("오류: " + res.error); }
+  });
+}
+
+function showToast(msg) {
+  var toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(function() { toast.classList.remove('show'); }, 2000);
+}
+</script>
+</body>
+</html>
