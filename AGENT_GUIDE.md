@@ -92,9 +92,16 @@
 
 ## GAS API 사용법
 
+> **⚠️ 중요: GAS API는 302 리다이렉트를 거치므로 WebFetch/curl로 직접 호출이 안 됨. 반드시 Claude in Chrome으로 브라우저에서 URL 접근해야 함.**
+
+### 호출 방법 (Claude in Chrome)
+
+1. Chrome에서 아래 URL을 주소창에 입력하거나 `navigate` 도구로 이동
+2. 페이지에 JSON 응답이 표시됨 → 결과 확인
+
 ### 기록 (create)
 ```
-GET {API_URL}?action=create&유입경로={값}&고객유형={값}&문의장비={값}&메모={값}
+{API_URL}?action=create&유입경로={값}&고객유형={값}&문의장비={값}&메모={값}
 ```
 
 | 파라미터 | 필수 | 값 |
@@ -106,17 +113,22 @@ GET {API_URL}?action=create&유입경로={값}&고객유형={값}&문의장비={
 | 메모 | X | 고객명, 특이사항 등 |
 | 예약여부 | X | Y / N (기본 N) |
 
+**파라미터 값은 반드시 URL 인코딩할 것.** 한글은 `encodeURIComponent()` 처리.
+예: `유입경로=네이버검색` → `%EC%9C%A0%EC%9E%85%EA%B2%BD%EB%A1%9C=%EB%84%A4%EC%9D%B4%EB%B2%84%EA%B2%80%EC%83%89`
+
+또는 Chrome 주소창에 한글 그대로 입력하면 브라우저가 자동 인코딩함.
+
 ### 목록 조회
 ```
-GET {API_URL}?action=list
-GET {API_URL}?action=list&filter=pending   (미확정)
-GET {API_URL}?action=list&filter=booked    (예약)
-GET {API_URL}?action=list&filter=lost      (미예약)
+{API_URL}?action=list
+{API_URL}?action=list&filter=pending   (미확정)
+{API_URL}?action=list&filter=booked    (예약)
+{API_URL}?action=list&filter=lost      (미예약)
 ```
 
 ### 수정
 ```
-GET {API_URL}?action=update&row={행번호}&예약여부=Y&예약금액=500000
+{API_URL}?action=update&row={행번호}&예약여부=Y&예약금액=500000
 ```
 
 ### 중복 방지
