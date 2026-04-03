@@ -88,7 +88,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="page-input" class="page active">
   <div class="card" id="scan-card">
     <h3>채팅 캡쳐로 자동입력</h3>
-    <input type="file" id="image-input" accept="image/*" capture="environment" style="display:none" onchange="handleImage(this)">
+    <input type="file" id="image-input" accept="image/*" style="display:none" onchange="handleImage(this)">
     <button class="scan-btn" onclick="document.getElementById('image-input').click()">캡쳐 사진 선택</button>
     <div id="scan-status" style="display:none; margin-top:10px; font-size:13px; color:#666; text-align:center;"></div>
   </div>
