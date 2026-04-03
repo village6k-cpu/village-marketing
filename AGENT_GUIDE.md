@@ -92,12 +92,24 @@
 
 ## GAS API 사용법
 
-> **⚠️ 중요: GAS API는 302 리다이렉트를 거치므로 WebFetch/curl로 직접 호출이 안 됨. 반드시 Claude in Chrome으로 브라우저에서 URL 접근해야 함.**
+> **⚠️ GAS API는 302 리다이렉트를 거침. WebFetch로는 직접 호출 불가.**
 
-### 호출 방법 (Claude in Chrome)
+### 호출 방법 (3가지 — 상황에 맞게 선택)
 
-1. Chrome에서 아래 URL을 주소창에 입력하거나 `navigate` 도구로 이동
-2. 페이지에 JSON 응답이 표시됨 → 결과 확인
+**방법 1: Bash curl (가장 빠름, 권장)**
+```bash
+curl -sL "{API_URL}?action=create&유입경로=네이버검색&고객유형=신규&문의장비=FX3"
+```
+`-L` 플래그가 리다이렉트를 자동으로 따라감. JSON 응답 직접 수신.
+
+**방법 2: Chrome navigate**
+Chrome에서 API URL로 이동 → 페이지에 JSON 응답 표시됨
+
+**방법 3: Chrome javascript_tool**
+스프레드시트나 아무 페이지에서 콘솔 실행:
+```javascript
+fetch("{API_URL}?action=create&유입경로=네이버검색&고객유형=신규&문의장비=FX3", {redirect:"follow"}).then(r=>r.text()).then(console.log)
+```
 
 ### 기록 (create)
 ```
