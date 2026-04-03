@@ -20,6 +20,12 @@ function doGet(e) {
       .addMetaTag("viewport", "width=device-width, initial-scale=1.0, user-scalable=no");
   }
 
+  // 이미지 파싱용 브릿지 (iframe에서 사용)
+  if (action === "bridge") {
+    return HtmlService.createHtmlOutputFromFile("bridge")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   try {
     switch (action) {
       case "list":

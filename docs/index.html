@@ -403,6 +403,59 @@ function resizeImage(dataUrl, maxSize, cb) {
   img.src = dataUrl;
 }
 
+// 이미지 파싱용 iframe 브릿지
+var bridgeReady = false;
+var bridgeIframe = document.createElement("iframe");
+bridgeIframe.style.display = "none";
+bridgeIframe.src = API_URL + "?action=bridge";
+document.body.appendChild(bridgeIframe);
+
+window.addEventListener("message", function(event) {
+  var data = event.data;
+  if (!data) return;
+
+  if (data.type === "bridgeReady") {
+    bridgeReady = true;
+    return;
+  }
+
+  if (data.type === "parseImageResult") {
+    var scanBtn = document.querySelector('.scan-btn');
+    var status = document.getElementById('scan-status');
+    var input = document.getElementById('image-input');
+    var res = data.result;
+
+    scanBtn.disabled = false;
+    scanBtn.textContent = "캡쳐 사진 선택";
+    input.value = "";
+
+    if (!res || !res.success) {
+      status.textContent = "분석 실패: " + (res ? res.error : "알 수 없는 오류");
+      return;
+    }
+
+    var d = res.data;
+    status.textContent = "자동 입력 완료!";
+    setTimeout(function() { status.style.display = "none"; }, 2000);
+
+    if (d.유입경로) {
+      document.getElementById('channel-group').querySelectorAll('button').forEach(function(b) {
+        b.classList.remove('selected');
+        if (b.textContent === d.유입경로) { b.classList.add('selected'); selected.channel = d.유입경로; }
+      });
+    }
+    if (d.고객유형) {
+      document.getElementById('custtype-group').querySelectorAll('button').forEach(function(b) {
+        b.classList.remove('selected');
+        if (b.textContent === d.고객유형) { b.classList.add('selected'); selected.custtype = d.고객유형; }
+      });
+    }
+    if (d.문의장비) {
+      document.getElementById('input-equip').value = d.문의장비;
+    }
+  }
+});
+
 function handleImage(input) {
   if (!input.files || !input.files[0]) return;
   var file = input.files[0];
@@ -418,49 +471,14 @@ function handleImage(input) {
   reader.onload = function(e) {
     var base64 = e.target.result;
     resizeImage(base64, 800, function(resized) {
-      fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "parseImage", image: resized }),
-        redirect: "follow"
-      })
-      .then(function(r) { return r.text(); })
-      .then(function(text) {
-        try { return JSON.parse(text); }
-        catch(err) { return { success: false, error: "응답 파싱 실패" }; }
-      })
-      .catch(function() {
-        return { success: false, error: "네트워크 오류. 다시 시도해주세요." };
-      })
-      .then(function(res) {
+      if (!bridgeReady) {
+        status.textContent = "브릿지 로딩 중... 잠시 후 다시 시도해주세요.";
         scanBtn.disabled = false;
         scanBtn.textContent = "캡쳐 사진 선택";
         input.value = "";
-
-        if (!res || !res.success) {
-          status.textContent = "분석 실패: " + (res ? res.error : "알 수 없는 오류");
-          return;
-        }
-
-        var d = res.data;
-        status.textContent = "자동 입력 완료!";
-        setTimeout(function() { status.style.display = "none"; }, 2000);
-
-        if (d.유입경로) {
-          document.getElementById('channel-group').querySelectorAll('button').forEach(function(b) {
-            b.classList.remove('selected');
-            if (b.textContent === d.유입경로) { b.classList.add('selected'); selected.channel = d.유입경로; }
-          });
-        }
-        if (d.고객유형) {
-          document.getElementById('custtype-group').querySelectorAll('button').forEach(function(b) {
-            b.classList.remove('selected');
-            if (b.textContent === d.고객유형) { b.classList.add('selected'); selected.custtype = d.고객유형; }
-          });
-        }
-        if (d.문의장비) {
-          document.getElementById('input-equip').value = d.문의장비;
-        }
-      });
+        return;
+      }
+      bridgeIframe.contentWindow.postMessage({ type: "parseImage", image: resized }, "*");
     });
   };
   reader.readAsDataURL(file);
