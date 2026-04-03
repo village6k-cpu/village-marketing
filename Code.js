@@ -284,7 +284,32 @@ function doParseImage_(params) {
 
   var payload = {
     model: "claude-sonnet-4-20250514",
-    max_tokens: 300,
+    max_tokens: 1024,
+    tools: [{
+      name: "extract_inflow_info",
+      description: "카카오톡 채팅 캡쳐에서 추출한 고객 유입 정보를 구조화된 형태로 반환합니다.",
+      input_schema: {
+        type: "object",
+        properties: {
+          유입경로: {
+            type: "string",
+            enum: ["네이버검색", "인스타그램", "당근마켓", "지인소개", "기타"],
+            description: "고객이 렌탈샵을 알게 된 경로"
+          },
+          문의장비: {
+            type: "string",
+            description: "고객이 문의한 카메라/렌즈/장비명 (여러 개면 쉼표 구분, 없으면 '미확인')"
+          },
+          고객유형: {
+            type: "string",
+            enum: ["신규", "재방문"],
+            description: "재방문 단서가 있으면 재방문, 없으면 신규"
+          }
+        },
+        required: ["유입경로", "문의장비", "고객유형"]
+      }
+    }],
+    tool_choice: { type: "tool", name: "extract_inflow_info" },
     messages: [{
       role: "user",
       content: [
@@ -294,19 +319,17 @@ function doParseImage_(params) {
         },
         {
           type: "text",
-          text: "이것은 카메라 렌탈샵(빌리지)의 카카오톡 고객 문의 캡쳐 화면이야.\n" +
-                "채팅 내용을 꼼꼼히 읽고 다음 정보를 추출해. 반드시 JSON만 답변해.\n\n" +
-                "1. 유입경로: 고객이 어떻게 알고 연락했는지 파악해.\n" +
-                "   - '네이버에서 봤어요', '검색해서' → \"네이버검색\"\n" +
-                "   - '인스타에서', 'SNS에서' → \"인스타그램\"\n" +
-                "   - '당근에서', '당근마켓' → \"당근마켓\"\n" +
-                "   - '소개받았어요', '친구가', '지인' → \"지인소개\"\n" +
-                "   - 위에 해당 없거나 언급 없으면 → \"기타\"\n\n" +
-                "2. 문의장비: 고객이 빌리려는 카메라/렌즈/장비명을 모두 추출해. (여러 개면 쉼표 구분)\n" +
-                "   예: \"FX6\", \"A7M4, 24-70 렌즈\", \"RED KOMODO\"\n" +
-                "   장비 언급이 없으면 \"미확인\"\n\n" +
-                "3. 고객유형: '전에도 빌렸어요', '다시', '재렌탈', '또' 등 재방문 힌트가 있으면 \"재방문\", 없으면 \"신규\"\n\n" +
-                "응답: {\"유입경로\":\"...\",\"문의장비\":\"...\",\"고객유형\":\"...\"}"
+          text: "이것은 카메라 렌탈샵 '빌리지'의 카카오톡 고객 문의 캡쳐야.\n\n" +
+                "채팅 내용을 꼼꼼히 읽고 다음을 파악해줘:\n\n" +
+                "1. 유입경로: 고객이 어떻게 알고 연락했는지\n" +
+                "   - '네이버에서', '검색해서', '블로그 보고' → 네이버검색\n" +
+                "   - '인스타에서', 'SNS', '릴스 보고' → 인스타그램\n" +
+                "   - '당근에서', '당근마켓' → 당근마켓\n" +
+                "   - '소개받아서', '친구가', '지인' → 지인소개\n" +
+                "   - 언급 없으면 → 기타\n\n" +
+                "2. 문의장비: 빌리려는 카메라/렌즈/장비 이름 전부 (FX6, A7M4, 24-70 렌즈 등)\n\n" +
+                "3. 고객유형: '전에도 빌렸어요', '다시', '재렌탈' 등 재방문 힌트 여부\n\n" +
+                "extract_inflow_info 도구를 사용해서 결과를 반환해줘."
         }
       ]
     }]
@@ -328,13 +351,14 @@ function doParseImage_(params) {
 
   if (json.error) return { success: false, error: json.error.message };
 
-  var text = json.content[0].text;
-  // JSON 부분만 추출
-  var jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return { success: false, error: "파싱 실패", raw: text };
+  // tool_use 응답에서 input 추출
+  for (var i = 0; i < json.content.length; i++) {
+    if (json.content[i].type === "tool_use") {
+      return { success: true, data: json.content[i].input };
+    }
+  }
 
-  var parsed = JSON.parse(jsonMatch[0]);
-  return { success: true, data: parsed };
+  return { success: false, error: "파싱 실패" };
 }
 
 // ─── google.script.run 용 래퍼 (HTML에서 호출) ──────────────
